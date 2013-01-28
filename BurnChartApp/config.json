@@ -1,10 +1,10 @@
 {
-    "name": "CFDChartApp",
+    "name": "BurnChartApp",
     "className": "CustomApp",
     "server": "rally1.rallydev.com",
     "sdk": "2.0p5",
     "javascript": [
-        "src/CFDApp.js"
+        "src/BurnChartApp.js"
     ],
     "css": [
         "src/app.css"
