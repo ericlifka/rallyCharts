@@ -3,6 +3,6 @@ Ext.define('CFDChartApp', {
     componentCls: 'app',
 
     launch: function() {
-        alert('asdf')
+
     }
 });
