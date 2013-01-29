@@ -1,8 +1,8 @@
-Ext.define('CFDApp', {
+Ext.define('CFDChartApp', {
     extend: 'Rally.app.App',
     componentCls: 'app',
 
     launch: function() {
-        //Write app code here
+        alert('asdf')
     }
 });
