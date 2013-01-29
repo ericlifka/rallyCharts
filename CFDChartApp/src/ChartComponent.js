@@ -54,6 +54,7 @@ Ext.define('Rally.ui.chart.ChartComponent', {
             series: chartData.series
         };
 
+        
         this._highchart = this.add(highChartConfig);
     },
     
