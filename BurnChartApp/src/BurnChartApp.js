@@ -9,7 +9,7 @@ Ext.define('BurnChartApp', {
                 find: {
                     "_ValidFrom":{
                         "$lte":"2012-12-14T20:40:08.830Z",
-                        "$gt":"2012-04-03T13:40:58Z"
+                        "$gt":"2012-01-03T13:40:58Z"
                     },
                     "_TypeHierarchy":-51038,
                     "_ItemHierarchy":5103028089,
@@ -40,6 +40,8 @@ Ext.define('BurnChartApp', {
                     }
                 }
             },
+
+            // chartColors: ['#B3B79A', '#E57E3A', '#E5D038'],
 
             chartConfig: {
                 chart: {

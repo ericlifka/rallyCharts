@@ -4,16 +4,25 @@ Ext.define('Rally.calculators.BurnCalculator', {
     config: {
         aggregationType: 'count',
         workDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+        holidays: [],
         chartMetricsConfig: undefined
     },
 
-    _defaultChartMetricsConfig: undefined,
+    _defaultChartMetricsConfig: {
+        sum: {
+            "PlanEstimate": "StoryUnitScope",
+            "AcceptedStoryCount": "StoryCountBurnUp",
+            "AcceptedStoryPoints": "StoryUnitBurnUp",
+            "TaskRemainingTotal": "TaskUnitBurnDown",
+            "TaskEstimateTotal": "TaskUnitScope"
+        },
+        count: {
+            "StoryCountScope": "StoryCountScope"
+        }
+    },
 
     constructor: function(config) {
         Ext.apply(this.config, config);
-
-        var chartMetrics = this.config.chartMetricsConfig || this._defaultChartMetricsConfig;
-        this._buildChartMetrics(chartMetrics);
     },
 
     prepareChartData: function(store) {
@@ -22,11 +31,17 @@ Ext.define('Rally.calculators.BurnCalculator', {
             results.push(record.raw);
         });
 
+        //-------------mocking
+        results = snapshotsCSV;
+        //-------------mocking
+
         return this._calculateBurn(results, this.config);
     },
 
-    _buildChartMetrics: function(chartMetricsConfig) {
-        var chartMetrics = [];
+    _buildChartMetrics: function() {
+        var chartMetrics = [],
+            chartMetricsConfig = this.config.chartMetricsConfig || this._defaultChartMetricsConfig;
+
         for(var func in chartMetricsConfig) {
             var fields = chartMetricsConfig[func];
             for(var field in fields) {
@@ -38,44 +53,46 @@ Ext.define('Rally.calculators.BurnCalculator', {
             }
         }
 
-        this.chartMetrics = chartMetrics;
+        return chartMetrics;
+    },
+
+    _buildAggregationConfig: function (chartMetrics) {
+        var aggregationConfig = [];
+
+        for (var i = 0, length = chartMetrics.length; i < length; i += 1) {
+            var metric = chartMetrics[i];
+            aggregationConfig.push({
+                name: metric.as,
+                type: 'column'
+            });
+        }
+
+        aggregationConfig.push({
+            name: 'Ideal',
+            type: 'line',
+            yAxis: 1
+        });
+
+        aggregationConfig.push({
+            name: 'Ideal2',
+            type: 'line',
+            yAxis: 1
+        });
+
+        return aggregationConfig;
     },
 
     _calculateBurn: function(results, config) {
         var lumenize = Rally.data.lookback.Lumenize,
             granularity = lumenize.Time.DAY,
             tz = config.timeZone,
-            workDays = config.workDays.join(',');
-
-        // Test data!
-        var snapshotsCSV = [
-            ["ObjectID", "_ValidFrom", "_ValidTo", "ScheduleState", "PlanEstimate", "TaskRemainingTotal", "TaskEstimateTotal"],
-            [1, "2010-10-10T15:00:00.000Z", "2011-01-02T13:00:00.000Z", "Ready to pull", 5, 15, 15],
-            [1, "2011-01-02T13:00:00.000Z", "2011-01-02T15:10:00.000Z", "Ready to pull", 5, 15, 15],
-            [1, "2011-01-02T15:10:00.000Z", "2011-01-03T15:00:00.000Z", "In progress", 5, 20, 15],
-            [2, "2011-01-02T15:00:00.000Z", "2011-01-03T15:00:00.000Z", "Ready to pull", 3, 5, 5],
-            [3, "2011-01-02T15:00:00.000Z", "2011-01-03T15:00:00.000Z", "Ready to pull", 5, 12, 12],
-            [2, "2011-01-03T15:00:00.000Z", "2011-01-04T15:00:00.000Z", "In progress", 3, 5, 5],
-            [3, "2011-01-03T15:00:00.000Z", "2011-01-04T15:00:00.000Z", "Ready to pull", 5, 12, 12],
-            [4, "2011-01-03T15:00:00.000Z", "2011-01-04T15:00:00.000Z", "Ready to pull", 5, 15, 15],
-            [1, "2011-01-03T15:10:00.000Z", "2011-01-04T15:00:00.000Z", "In progress", 5, 12, 15],
-            [1, "2011-01-04T15:00:00.000Z", "2011-01-06T15:00:00.000Z", "Accepted", 5, 0, 15],
-            [2, "2011-01-04T15:00:00.000Z", "2011-01-06T15:00:00.000Z", "In test", 3, 1, 5],
-            [3, "2011-01-04T15:00:00.000Z", "2011-01-05T15:00:00.000Z", "In progress", 5, 10, 12],
-            [4, "2011-01-04T15:00:00.000Z", "2011-01-06T15:00:00.000Z", "Ready to pull", 5, 15, 15],
-            [5, "2011-01-04T15:00:00.000Z", "2011-01-06T15:00:00.000Z", "Ready to pull", 2, 4, 4],
-            [3, "2011-01-05T15:00:00.000Z", "2011-01-07T15:00:00.000Z", "In test", 5, 5, 12],
-            [1, "2011-01-06T15:00:00.000Z", "2011-01-07T15:00:00.000Z", "Released", 5, 0, 15],
-            [2, "2011-01-06T15:00:00.000Z", "2011-01-07T15:00:00.000Z", "Accepted", 3, 0, 5],
-            [4, "2011-01-06T15:00:00.000Z", "2011-01-07T15:00:00.000Z", "In progress", 5, 7, 15],
-            [5, "2011-01-06T15:00:00.000Z", "2011-01-07T15:00:00.000Z", "Ready to pull", 2, 4, 4],
-            [1, "2011-01-07T15:00:00.000Z", "9999-01-01T00:00:00.000Z", "Released", 5, 0, 15],
-            [2, "2011-01-07T15:00:00.000Z", "9999-01-01T00:00:00.000Z", "Released", 3, 0, 5],
-            [3, "2011-01-07T15:00:00.000Z", "9999-01-01T00:00:00.000Z", "Accepted", 5, 0, 12],
-            [4, "2011-01-07T15:00:00.000Z", "9999-01-01T00:00:00.000Z", "In test", 5, 3, 15]
-        ];
+            workDays = config.workDays.join(','),
+            holidays = config.holidays;
         
-        var snapshots = lumenize.csvStyleArray_To_ArrayOfMaps(snapshotsCSV);
+        //--------mocking
+        var snapshots = lumenize.csvStyleArray_To_ArrayOfMaps(results);
+        //--------mocking
+
         // var deriveFieldsOnInput = [
         var annotatedFields = [
             {
@@ -102,7 +119,7 @@ Ext.define('Rally.calculators.BurnCalculator', {
             }
         ];
 
-        var metrics = this.chartMetrics;
+        var chartMetrics = this._buildChartMetrics();
 
         var summaryMetricsConfig = [
             {
@@ -154,29 +171,18 @@ Ext.define('Rally.calculators.BurnCalculator', {
 
         var burnConfig = {
             deriveFieldsOnInput: annotatedFields,
-            metrics: metrics,
+            metrics: chartMetrics,
             summaryMetricsConfig: summaryMetricsConfig,
             deriveFieldsAfterSummary: annotatedFieldsAfterSummary,
             granularity: granularity,
-            tz: tz, // Config
-            holidays: [], // Config
-            workDays: workDays // Config
+            tz: tz,
+            holidays: holidays,
+            workDays: workDays
         };
 
         var calculator = new lumenize.TimeSeriesCalculator(burnConfig),
             startOn = new lumenize.Time('2011-01-02').getISOStringInTZ(tz),
-            endBefore = new lumenize.Time('2011-01-10').getISOStringInTZ(tz),
-            keys = [
-                'label',
-                'StoryUnitScope',
-                'StoryCountScope',
-                'StoryCountBurnUp',
-                'StoryUnitBurnUp',
-                'TaskUnitBurnDown',
-                'TaskUnitScope',
-                'Ideal',
-                'Ideal2'
-            ];
+            endBefore = new lumenize.Time('2011-01-10').getISOStringInTZ(tz);
 
         calculator.addSnapshots(snapshots, startOn, endBefore);
 
@@ -189,48 +195,8 @@ Ext.define('Rally.calculators.BurnCalculator', {
             categories.push(dataObject.label);
         }
 
-        var aggregationConfig = [
-            {
-                name: 'StoryUnitScope',
-                type: 'column',
-                color: '#B3B79A'
-            },
-            {
-                name: 'StoryCountScope',
-                type: 'column',
-                color: '#E57E3A'
-            },
-            {
-                name: 'StoryCountBurnUp',
-                type: 'column',
-                color: '#E5D038'
-            },
-            {
-                name: 'StoryUnitBurnUp',
-                type: 'column',
-                color: '#B2E3B6'
-            },
-            {
-                name: 'TaskUnitBurnDown',
-                type: 'column',
-                color: '#3A874F'
-            },
-            {
-                name: 'TaskUnitScope',
-                type: 'column',
-                color: '#5C9ACB'
-            },
-            {
-                name: 'Ideal',
-                type: 'line',
-                yAxis: 1
-            },
-            {
-                name: 'Ideal2',
-                type: 'line',
-                yAxis: 1
-            }
-        ];
+        var aggregationConfig = this._buildAggregationConfig(chartMetrics);
+       
 
         series = lumenize.aggregationAtArray_To_HighChartsSeries(seriesData, aggregationConfig);
 

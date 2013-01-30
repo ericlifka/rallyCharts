@@ -19,6 +19,7 @@ Ext.define('Rally.ui.chart.ChartComponent', {
         queryConfig: undefined,
         calculatorType: undefined,
         calculatorConfig: undefined,
+        chartColors: ['#B3B79A', '#E57E3A', '#E5D038', '#B2E3B6', '#3A874F', '#5C9ACB'],
         chartConfig: undefined
     },
 
@@ -77,6 +78,8 @@ Ext.define('Rally.ui.chart.ChartComponent', {
         var chartConfig = this.getChartConfig();
         chartConfig.xAxis.categories = chartData.categories;
 
+        this._setChartColors(chartData.series);
+
         var highChartConfig = {
             xtype: 'highchart',
             chartConfig: chartConfig,
@@ -86,9 +89,18 @@ Ext.define('Rally.ui.chart.ChartComponent', {
         
         this._highchart = this.add(highChartConfig);
     },
+
+    _setChartColors: function(series) {
+        var colors = this.getChartColors(),
+            length = Math.min(series.length, colors.length);
+
+        for (var i = 0; i < length; i += 1) {
+            series[i].color = colors[i];
+        }
+    },
     
     _getTimeZone: function() {
-
+        
     },
 
     _getChartStartDate: function() {
