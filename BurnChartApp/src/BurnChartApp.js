@@ -26,7 +26,19 @@ Ext.define('BurnChartApp', {
             calculatorConfig: {
                 workDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
                 timeZone: 'America/New_York',
-                holidays: []
+                holidays: [],
+                chartMetricsConfig: {
+                    sum: {
+                        "PlanEstimate": "StoryUnitScope",
+                        "AcceptedStoryCount": "StoryCountBurnUp",
+                        "AcceptedStoryPoints": "StoryUnitBurnUp",
+                        "TaskRemainingTotal": "TaskUnitBurnDown",
+                        "TaskEstimateTotal": "TaskUnitScope"
+                    },
+                    count: {
+                        "StoryCountScope": "StoryCountScope"
+                    }
+                }
             },
 
             chartConfig: {

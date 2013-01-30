@@ -3,13 +3,17 @@ Ext.define('Rally.calculators.BurnCalculator', {
 
     config: {
         aggregationType: 'count',
-        workDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+        workDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+        chartMetricsConfig: undefined
     },
 
-    constructor: function(config) {
-        this.config.upSeriesType = this.config.aggregationType.match(/estimate/i) ? 'Points' : 'Story Count';
+    _defaultChartMetricsConfig: undefined,
 
+    constructor: function(config) {
         Ext.apply(this.config, config);
+
+        var chartMetrics = this.config.chartMetricsConfig || this._defaultChartMetricsConfig;
+        this._buildChartMetrics(chartMetrics);
     },
 
     prepareChartData: function(store) {
@@ -19,6 +23,22 @@ Ext.define('Rally.calculators.BurnCalculator', {
         });
 
         return this._calculateBurn(results, this.config);
+    },
+
+    _buildChartMetrics: function(chartMetricsConfig) {
+        var chartMetrics = [];
+        for(var func in chartMetricsConfig) {
+            var fields = chartMetricsConfig[func];
+            for(var field in fields) {
+                chartMetrics.push({
+                    field: field,
+                    as: fields[field],
+                    f: func
+                });
+            }
+        }
+
+        this.chartMetrics = chartMetrics;
     },
 
     _calculateBurn: function(results, config) {
@@ -56,7 +76,6 @@ Ext.define('Rally.calculators.BurnCalculator', {
         ];
         
         var snapshots = lumenize.csvStyleArray_To_ArrayOfMaps(snapshotsCSV);
-        // snapshots = results;
         // var deriveFieldsOnInput = [
         var annotatedFields = [
             {
@@ -83,37 +102,7 @@ Ext.define('Rally.calculators.BurnCalculator', {
             }
         ];
 
-        var metrics = [ // Config
-            {
-                as: 'StoryUnitScope',
-                field: 'PlanEstimate',
-                f: 'sum'
-            },
-            {
-                as: 'StoryCountScope',
-                f: 'count'
-            },
-            {
-                as: 'StoryCountBurnUp',
-                field: 'AcceptedStoryCount',
-                f: 'sum'
-            },
-            {
-                as: 'StoryUnitBurnUp',
-                field: 'AcceptedStoryPoints',
-                f: 'sum'
-            },
-            {
-                as: 'TaskUnitBurnDown',
-                field: 'TaskRemainingTotal',
-                f: 'sum'
-            },
-            {
-                as: 'TaskUnitScope',
-                field: 'TaskEstimateTotal',
-                f: 'sum'
-            }
-        ];
+        var metrics = this.chartMetrics;
 
         var summaryMetricsConfig = [
             {
