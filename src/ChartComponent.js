@@ -2,6 +2,19 @@ Ext.define('Rally.ui.chart.ChartComponent', {
     extend: 'Ext.Container',
     alias: 'widget.rallychartcomponent',
 
+    items:[
+        {
+            xtype:'container',
+            itemId:'header',
+            cls:'header'
+        },
+        {
+            xtype:'container',
+            itemId:'chart',
+            cls:'chart'
+        }
+    ],
+
     config: {
         queryConfig: undefined,
         calculatorType: undefined,
@@ -16,17 +29,30 @@ Ext.define('Rally.ui.chart.ChartComponent', {
     initComponent: function (config) {
         this.callParent(arguments);
 
+        var chartConfig = this.getChartConfig();
+        if(chartConfig.credits) {
+            chartConfig.credits.enabled = false;
+        } else {
+            chartConfig.credits = {
+                enabled: false
+            };
+        }
+
+        var calculatorConfig = this.getCalculatorConfig();
+        calculatorConfig.startDate = this._getChartStartDate();
+        calculatorConfig.endDate = this._getChartEndDate();
+
         this.calculator = Ext.create(this.getCalculatorType(), this.getCalculatorConfig());
 
+        var queryConfig = this.getQueryConfig();
         var store = window.store = Ext.create(this.storeType, {
-            rawFind: this.getQueryConfig(),
+            rawFind: queryConfig.find,
             limit: Infinity,
-            hydrate: ["ScheduleState"],
-            fetch: ['ScheduleState']
+            hydrate: queryConfig.hydrate,
+            fetch: queryConfig.fetch
         });
         store.on('load', this._onStoreLoad, this);
         store.load();
-
     },
 
     _onStoreLoad: function (store) {
@@ -48,9 +74,12 @@ Ext.define('Rally.ui.chart.ChartComponent', {
     },
 
     _renderChart: function(chartData) {
+        var chartConfig = this.getChartConfig();
+        chartConfig.xAxis.categories = chartData.categories;
+
         var highChartConfig = {
             xtype: 'highchart',
-            chartConfig: this.getChartConfig(),
+            chartConfig: chartConfig,
             series: chartData.series
         };
 
@@ -63,11 +92,11 @@ Ext.define('Rally.ui.chart.ChartComponent', {
     },
 
     _getChartStartDate: function() {
-
+        return new Date();
     },
 
     _getChartEndDate: function() {
-
+        return new Date();
     },
 
     _buildChartTitle: function() {
