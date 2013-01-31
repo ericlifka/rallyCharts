@@ -35,7 +35,7 @@ Ext.define('Rally.calculators.BurnCalculator', {
         results = snapshotsCSV;
         //-------------mocking
 
-        return this._calculateBurn(results, this.config);
+        return this._calculateBurn(results);
     },
 
     _buildChartMetrics: function() {
@@ -82,69 +82,8 @@ Ext.define('Rally.calculators.BurnCalculator', {
         return aggregationConfig;
     },
 
-    _calculateBurn: function(results, config) {
-        var lumenize = Rally.data.lookback.Lumenize,
-            granularity = lumenize.Time.DAY,
-            tz = config.timeZone,
-            workDays = config.workDays.join(','),
-            holidays = config.holidays;
-        
-        //--------mocking
-        var snapshots = lumenize.csvStyleArray_To_ArrayOfMaps(results);
-        //--------mocking
-
-        // var deriveFieldsOnInput = [
-        var annotatedFields = [
-            {
-                field: 'AcceptedStoryCount',
-                f: function(row) {
-                    var state = row.ScheduleState;
-                    if(state === 'Accepted' || state === 'Released') {
-                        return 1;
-                    } else {
-                        return 0;
-                    }
-                }
-            },
-            {
-                field: 'AcceptedStoryPoints',
-                f: function(row) {
-                    var state = row.ScheduleState;
-                    if(state === 'Accepted' || state === 'Released') {
-                        return row.PlanEstimate;
-                    } else {
-                        return 0;
-                    }
-                }
-            }
-        ];
-
-        var chartMetrics = this._buildChartMetrics();
-
-        var summaryMetricsConfig = [
-            {
-                field: 'TaskUnitScope',
-                f: 'max'
-            },
-            {
-                field: 'TaskUnitBurnDown',
-                f: 'max'
-            },
-            {
-                as: 'TaskUnitBurnDown_max_index',
-                f: function(seriesData, summaryMetrics) {
-                    for(var i = 0, length = seriesData.length; i < length; i++) {
-                        var row = seriesData[i];
-                        if(row.TaskUnitBurnDown === summaryMetrics.TaskUnitBurnDown_max) {
-                            return i;
-                        }
-                    }
-                }
-            }
-        ];
-
-        // var deriveFieldsAfterSummary = [
-        var annotatedFieldsAfterSummary = [
+    _getIdealLines: function() {
+        return [
             {
                 as: 'Ideal',
                 f: function(row, index, summaryMetrics, seriesData) {
@@ -168,16 +107,79 @@ Ext.define('Rally.calculators.BurnCalculator', {
                 }
             }
         ];
+    },
+
+    _getSummariesConfig: function () {
+        return [
+            {
+                field: 'TaskUnitScope',
+                f: 'max'
+            },
+            {
+                field: 'TaskUnitBurnDown',
+                f: 'max'
+            },
+            {
+                as: 'TaskUnitBurnDown_max_index',
+                f: function(seriesData, summaryMetrics) {
+                    for(var i = 0, length = seriesData.length; i < length; i++) {
+                        var row = seriesData[i];
+                        if(row.TaskUnitBurnDown === summaryMetrics.TaskUnitBurnDown_max) {
+                            return i;
+                        }
+                    }
+                }
+            }
+        ];
+    },
+
+    _getAnnotatedFieldsConfig: function () {
+        return [
+            {
+                field: 'AcceptedStoryCount',
+                f: function(row) {
+                    var state = row.ScheduleState;
+                    if(state === 'Accepted' || state === 'Released') {
+                        return 1;
+                    } else {
+                        return 0;
+                    }
+                }
+            },
+            {
+                field: 'AcceptedStoryPoints',
+                f: function(row) {
+                    var state = row.ScheduleState;
+                    if(state === 'Accepted' || state === 'Released') {
+                        return row.PlanEstimate;
+                    } else {
+                        return 0;
+                    }
+                }
+            }
+        ];
+    },
+
+    _calculateBurn: function(results) {
+        var lumenize = Rally.data.lookback.Lumenize,
+            tz = this.config.timeZone;
+        
+        //--------mocking
+        var snapshots = lumenize.csvStyleArray_To_ArrayOfMaps(results);
+        //--------mocking
+
+        var chartMetrics = this._buildChartMetrics(),
+            aggregationConfig = this._buildAggregationConfig(chartMetrics);
 
         var burnConfig = {
-            deriveFieldsOnInput: annotatedFields,
+            deriveFieldsOnInput: this._getAnnotatedFieldsConfig(),
             metrics: chartMetrics,
-            summaryMetricsConfig: summaryMetricsConfig,
-            deriveFieldsAfterSummary: annotatedFieldsAfterSummary,
-            granularity: granularity,
+            summaryMetricsConfig:  this._getSummariesConfig(),
+            deriveFieldsAfterSummary: this._getIdealLines(),
+            granularity: lumenize.Time.DAY,
             tz: tz,
-            holidays: holidays,
-            workDays: workDays
+            holidays: this.config.holidays,
+            workDays: this.config.workDays.join(',')
         };
 
         var calculator = new lumenize.TimeSeriesCalculator(burnConfig),
@@ -194,9 +196,6 @@ Ext.define('Rally.calculators.BurnCalculator', {
             var dataObject = seriesData[i];
             categories.push(dataObject.label);
         }
-
-        var aggregationConfig = this._buildAggregationConfig(chartMetrics);
-       
 
         series = lumenize.aggregationAtArray_To_HighChartsSeries(seriesData, aggregationConfig);
 

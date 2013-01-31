@@ -100,7 +100,7 @@ Ext.define('Rally.ui.chart.ChartComponent', {
     },
     
     _getTimeZone: function() {
-        
+
     },
 
     _getChartStartDate: function() {
@@ -109,9 +109,5 @@ Ext.define('Rally.ui.chart.ChartComponent', {
 
     _getChartEndDate: function() {
         return new Date();
-    },
-
-    _buildChartTitle: function() {
-
     }
 });
